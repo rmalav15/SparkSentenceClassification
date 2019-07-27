@@ -1,19 +1,17 @@
 package com.spark.sentenceclassifiaction;
 
-import com.spark.sentenceclassifiaction.util.DataUtils;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.ml.PipelineModel;
+import org.apache.spark.ml.linalg.DenseVector;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.api.java.UDF1;
 import org.apache.spark.sql.types.DataTypes;
-import scala.Tuple2;
-import scala.collection.JavaConversions;
-import scala.collection.mutable.WrappedArray;
 
 @Accessors(fluent = true)
 @Getter
@@ -28,7 +26,7 @@ public class ClassificationService {
 
     private SparkContext sc;
 
-    public ClassificationService() {
+    ClassificationService() {
         SparkConf conf = new SparkConf().set("spark.sql.crossJoin.enabled", "true");
         spark = SparkSession.builder()
                 .config(conf)
@@ -36,11 +34,14 @@ public class ClassificationService {
                 .master(SPARK_MASTER)
                 .getOrCreate();
 
-        spark.udf().register("dotProduct",
+        /*spark.udf().register("dotProduct",
                 (WrappedArray<Double> vecA, WrappedArray<Double> vecB) -> {
                     return DataUtils.dotProduct((Double[]) JavaConversions.seqAsJavaList(vecA).toArray(),
                             (Double[]) JavaConversions.seqAsJavaList(vecB).toArray());
-                }, DataTypes.DoubleType);
+                }, DataTypes.DoubleType);*/
+
+        spark.udf().register("toArray",
+                (UDF1<DenseVector, Object>) DenseVector::toArray, DataTypes.createArrayType(DataTypes.DoubleType));
 
         sc = spark.sparkContext();
         preProcessingService = new PreProcessingService(spark);
@@ -53,8 +54,8 @@ public class ClassificationService {
      *  @trainData train data
      *  @testData test data
      */
-    public JavaPairRDD<Integer, Tuple2<Integer, Boolean>> modelProcessing(Dataset<Row> trainData,
-                                                                          Dataset<Row> testData) {
+    JavaPairRDD<String, String> modelProcessing(Dataset<Row> trainData,
+                                                Dataset<Row> testData) {
 
         PipelineModel preProcessingFit = preProcessingService.preProcessingPipeline().fit(trainData);
 
@@ -64,14 +65,27 @@ public class ClassificationService {
         trainData.createOrReplaceTempView("train_data_table");
         testData.createOrReplaceTempView("val_data_table");
 
-        trainData.show();
-        testData.show();
+        /*RDD<Row> trainRDD = trainData.rdd();
+        trainRDD.map(v -> v.get(4));*/
 
-        Dataset<Row> joinedData = spark.sql("SELECT val_data_table.Sentence as sent, " +
-                "SUM(1) AS count, train_data_table.Category AS train_cat, FROM train_data_table " +
-                "CROSS JOIN val_data_table" +
-                "WHERE dotProduct(train_data_table.NormEmbeddings, val_data_table.NormEmbeddings) >= 0.7 " +
-                "GROUP BY sent, train_cat");
+        /*trainData.show();
+        testData.show();*/
+
+        /*trainData.printSchema();*/
+
+        /*Dataset<Row> joinedData = spark.sql("SELECT v.Sentence AS sent, " +
+                "1 as count, t.Category as train_cat, " +
+                "AGGREGATE(ZIP_WITH(toArray(t.NormEmbeddings), toArray(v.NormEmbeddings), (x, y) -> x*y)," +
+                "CAST(0 AS DOUBLE), (acc, x) -> acc+x) AS cosine " +
+                "FROM train_data_table t " +
+                "CROSS JOIN val_data_table v");*/
+
+        Dataset<Row> joinedData = spark.sql("SELECT v.Sentence, " +
+                "SUM(1), t.Category FROM train_data_table t " +
+                "CROSS JOIN val_data_table v " +
+                "WHERE AGGREGATE(ZIP_WITH(toArray(t.NormEmbeddings), toArray(v.NormEmbeddings), (x, y) -> x*y)," +
+                "CAST(0 AS DOUBLE), (acc, x) -> acc+x) >= 0.7 " +
+                "GROUP BY v.Sentence, t.Category");
 
         joinedData.show();
 

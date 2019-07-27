@@ -37,14 +37,14 @@ public class DataUtils {
 
     public static Dataset<Row> generateDummyData(SparkSession spark) {
         List<Row> data = Arrays.asList(
-                RowFactory.create("0", "Hi I heard about Spark."),
-                RowFactory.create("1", "I wish Java could use case classes."),
-                RowFactory.create("2", "There is PySpark also."),
-                RowFactory.create("0", "Spark modules."),
-                RowFactory.create("1", "Java interfaces."),
-                RowFactory.create("1", "Spring boot Java."),
-                RowFactory.create("2", "Something PySpark."),
-                RowFactory.create("1", "Something Java.")
+                RowFactory.create("0c", "Hi I heard about Spark."),
+                RowFactory.create("1c", "I wish Java could use case classes."),
+                RowFactory.create("2c", "There is PySpark also."),
+                RowFactory.create("0c", "Spark modules."),
+                RowFactory.create("1c", "Java interfaces."),
+                RowFactory.create("1c", "Spring boot Java."),
+                RowFactory.create("2c", "Something PySpark."),
+                RowFactory.create("1c", "Something Java.")
         );
 
         StructType schema = new StructType(new StructField[]{
@@ -56,6 +56,7 @@ public class DataUtils {
     }
 
     public static double dotProduct(Double[] vecA, Double[] vecB) {
+        assert vecA.length == vecB.length;
         return IntStream.range(0, vecA.length)
                 .parallel()
                 .mapToDouble( id -> vecA[id] * vecB[id])

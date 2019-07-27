@@ -13,7 +13,7 @@ import org.apache.spark.sql.SparkSession;
 @Accessors(fluent = true)
 public class PreProcessingService {
 
-    private static final int EMB_SIZE = 100;
+    private static final int EMB_SIZE = 2;
 
     private SparkSession spark;
 
