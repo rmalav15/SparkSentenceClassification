@@ -12,6 +12,7 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.api.java.UDF1;
 import org.apache.spark.sql.types.DataTypes;
+import scala.Tuple2;
 
 @Accessors(fluent = true)
 @Getter
@@ -65,21 +66,7 @@ public class ClassificationService {
         trainData.createOrReplaceTempView("train_data_table");
         testData.createOrReplaceTempView("val_data_table");
 
-        /*RDD<Row> trainRDD = trainData.rdd();
-        trainRDD.map(v -> v.get(4));*/
-
-        /*trainData.show();
-        testData.show();*/
-
-        /*trainData.printSchema();*/
-
-        /*Dataset<Row> joinedData = spark.sql("SELECT v.Sentence AS sent, " +
-                "1 as count, t.Category as train_cat, " +
-                "AGGREGATE(ZIP_WITH(toArray(t.NormEmbeddings), toArray(v.NormEmbeddings), (x, y) -> x*y)," +
-                "CAST(0 AS DOUBLE), (acc, x) -> acc+x) AS cosine " +
-                "FROM train_data_table t " +
-                "CROSS JOIN val_data_table v");*/
-
+        // Filtering cosine value >= 0.7, it may happen that it doesnt find any matching sentences
         Dataset<Row> joinedData = spark.sql("SELECT v.Sentence, " +
                 "SUM(1), t.Category FROM train_data_table t " +
                 "CROSS JOIN val_data_table v " +
@@ -87,9 +74,16 @@ public class ClassificationService {
                 "CAST(0 AS DOUBLE), (acc, x) -> acc+x) >= 0.7 " +
                 "GROUP BY v.Sentence, t.Category");
 
-        joinedData.show();
+        JavaPairRDD<String, String> resultRdd = joinedData.javaRDD()
+                .mapToPair(r -> new Tuple2<>(r.getString(0), new Tuple2<>(r.getString(2), r.getLong(1))))
+                .reduceByKey((cat1, cat2) -> cat2._2 >= cat1._2 ? cat2 : cat1)
+                .mapToPair(t -> new Tuple2<>(t._1, t._2._1));
 
-        return null;
+        /*joinedData.show();
+        resultRdd.foreach(v -> System.out.println(v));*/
+
+        return resultRdd;
     }
+
 
 }
