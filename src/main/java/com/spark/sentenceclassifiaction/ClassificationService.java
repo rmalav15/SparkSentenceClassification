@@ -12,6 +12,7 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.api.java.UDF1;
 import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.storage.StorageLevel;
 import scala.Tuple2;
 
 @Accessors(fluent = true)
@@ -68,17 +69,18 @@ public class ClassificationService {
 
         // Filtering cosine value >= 0.7, it may happen that it doesnt find any matching sentences
         Dataset<Row> joinedData = spark.sql("SELECT v.Sentence, " +
-                "SUM(1), t.Category FROM train_data_table t " +
+                "AVG(AGGREGATE(ZIP_WITH(toArray(t.NormEmbeddings), toArray(v.NormEmbeddings), (x, y) -> x*y)," +
+                "CAST(0 AS DOUBLE), (acc, x) -> acc+x)) as avg_cosine, " +
+                "t.Category FROM train_data_table t " +
                 "CROSS JOIN val_data_table v " +
-                "WHERE AGGREGATE(ZIP_WITH(toArray(t.NormEmbeddings), toArray(v.NormEmbeddings), (x, y) -> x*y)," +
-                "CAST(0 AS DOUBLE), (acc, x) -> acc+x) >= 0.7 " +
                 "GROUP BY v.Sentence, t.Category");
 
         JavaPairRDD<String, String> resultRdd = joinedData.javaRDD()
-                .mapToPair(r -> new Tuple2<>(r.getString(0), new Tuple2<>(r.getString(2), r.getLong(1))))
+                .mapToPair(r -> new Tuple2<>(r.getString(0), new Tuple2<>(r.getString(2), r.getDouble(1))))
                 .reduceByKey((cat1, cat2) -> cat2._2 >= cat1._2 ? cat2 : cat1)
                 .mapToPair(t -> new Tuple2<>(t._1, t._2._1));
 
+        resultRdd = resultRdd.persist(StorageLevel.MEMORY_AND_DISK());
         /*joinedData.show();
         resultRdd.foreach(v -> System.out.println(v));*/
 

@@ -1,15 +1,17 @@
 package com.spark.sentenceclassifiaction.util;
 
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.mllib.evaluation.MulticlassMetrics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
+import scala.Tuple2;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 
 import static org.apache.spark.sql.functions.col;
@@ -31,7 +33,7 @@ public class DataUtils {
     }
 
     public static Dataset<Row> generateDummyData(SparkSession spark,
-                                          String csvPath, int totalTrainingCount, int totalQueryCount) {
+                                                 String csvPath, int totalTrainingCount, int totalQueryCount) {
         return null;
     }
 
@@ -59,8 +61,15 @@ public class DataUtils {
         assert vecA.length == vecB.length;
         return IntStream.range(0, vecA.length)
                 .parallel()
-                .mapToDouble( id -> vecA[id] * vecB[id])
+                .mapToDouble(id -> vecA[id] * vecB[id])
                 .reduce(0.0, Double::sum);
     }
 
+    public static MulticlassMetrics evaluate(JavaPairRDD<String, String> prediction,
+                                             JavaPairRDD<String, String> gt) {
+
+        JavaPairRDD<Object, Object> predictionAndLabels = gt.join(prediction)
+                .mapToPair(t -> new Tuple2<>(t._2._2, t._2._1));
+        return new MulticlassMetrics(predictionAndLabels.rdd());
+    }
 }
