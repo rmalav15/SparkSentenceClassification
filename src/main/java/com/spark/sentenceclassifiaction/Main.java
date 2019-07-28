@@ -31,6 +31,7 @@ public class Main {
 
         trainData.show();
 
+        // Execution time can be seen on Spark History Server.
         JavaPairRDD<String, Double> predictionRdd = classificationService.classify(trainData,
                 testData);
 
