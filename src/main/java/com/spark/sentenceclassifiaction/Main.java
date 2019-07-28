@@ -27,11 +27,13 @@ public class Main {
         Dataset<Row> trainData = randomSplit[0].persist(StorageLevel.MEMORY_AND_DISK());
         Dataset<Row> testData = randomSplit[1].persist(StorageLevel.MEMORY_AND_DISK());
 
-        JavaPairRDD<String, String> predictionRdd = classificationService.modelProcessing(trainData,
+        JavaPairRDD<String, Double> predictionRdd = classificationService.modelProcessing(trainData,
                 testData);
 
-        JavaPairRDD<String, String> gtRdd = testData.javaRDD()
-                .mapToPair(r -> new Tuple2<>(r.getAs("Sentence"), r.getAs("Category")));
+        testData = classificationService.trainLabelIndexerModel().transform(testData);
+
+        JavaPairRDD<String, Double> gtRdd = testData.javaRDD()
+                .mapToPair(r -> new Tuple2<>(r.getAs("Sentence"), r.getAs("Label")));
 
         MulticlassMetrics metrics = DataUtils.evaluate(predictionRdd, gtRdd);
 

@@ -4,10 +4,7 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import org.apache.spark.ml.Pipeline;
 import org.apache.spark.ml.PipelineStage;
-import org.apache.spark.ml.feature.Normalizer;
-import org.apache.spark.ml.feature.RegexTokenizer;
-import org.apache.spark.ml.feature.StopWordsRemover;
-import org.apache.spark.ml.feature.Word2Vec;
+import org.apache.spark.ml.feature.*;
 import org.apache.spark.sql.SparkSession;
 
 @Accessors(fluent = true)

@@ -65,8 +65,8 @@ public class DataUtils {
                 .reduce(0.0, Double::sum);
     }
 
-    public static MulticlassMetrics evaluate(JavaPairRDD<String, String> prediction,
-                                             JavaPairRDD<String, String> gt) {
+    public static MulticlassMetrics evaluate(JavaPairRDD<String, Double> prediction,
+                                             JavaPairRDD<String, Double> gt) {
 
         JavaPairRDD<Object, Object> predictionAndLabels = gt.join(prediction)
                 .mapToPair(t -> new Tuple2<>(t._2._2, t._2._1));

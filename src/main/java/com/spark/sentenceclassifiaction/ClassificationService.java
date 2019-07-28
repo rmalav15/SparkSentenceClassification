@@ -6,6 +6,8 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.ml.PipelineModel;
+import org.apache.spark.ml.feature.StringIndexer;
+import org.apache.spark.ml.feature.StringIndexerModel;
 import org.apache.spark.ml.linalg.DenseVector;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -27,6 +29,8 @@ public class ClassificationService {
     private SparkSession spark;
 
     private SparkContext sc;
+
+    private StringIndexerModel trainLabelIndexerModel;
 
     ClassificationService() {
         SparkConf conf = new SparkConf().set("spark.sql.crossJoin.enabled", "true");
@@ -56,27 +60,33 @@ public class ClassificationService {
      *  @trainData train data
      *  @testData test data
      */
-    JavaPairRDD<String, String> modelProcessing(Dataset<Row> trainData,
-                                                Dataset<Row> testData) {
+    JavaPairRDD<String, Double> modelProcessing(Dataset<Row> trainData,
+                                                 Dataset<Row> testData) {
 
         PipelineModel preProcessingFit = preProcessingService.preProcessingPipeline().fit(trainData);
 
         trainData = preProcessingFit.transform(trainData);
         testData = preProcessingFit.transform(testData);
 
+        StringIndexer trainLabelIndexer = new StringIndexer()
+                .setInputCol("Category")
+                .setOutputCol("Label");
+
+        trainLabelIndexerModel = trainLabelIndexer.fit(trainData);
+        trainData = trainLabelIndexerModel.transform(trainData);
+
         trainData.createOrReplaceTempView("train_data_table");
         testData.createOrReplaceTempView("val_data_table");
 
-        // Filtering cosine value >= 0.7, it may happen that it doesnt find any matching sentences
         Dataset<Row> joinedData = spark.sql("SELECT v.Sentence, " +
                 "AVG(AGGREGATE(ZIP_WITH(toArray(t.NormEmbeddings), toArray(v.NormEmbeddings), (x, y) -> x*y)," +
                 "CAST(0 AS DOUBLE), (acc, x) -> acc+x)) as avg_cosine, " +
-                "t.Category FROM train_data_table t " +
+                "t.Label FROM train_data_table t " +
                 "CROSS JOIN val_data_table v " +
-                "GROUP BY v.Sentence, t.Category");
+                "GROUP BY v.Sentence, t.Label");
 
-        JavaPairRDD<String, String> resultRdd = joinedData.javaRDD()
-                .mapToPair(r -> new Tuple2<>(r.getString(0), new Tuple2<>(r.getString(2), r.getDouble(1))))
+        JavaPairRDD<String, Double> resultRdd = joinedData.javaRDD()
+                .mapToPair(r -> new Tuple2<>(r.getString(0), new Tuple2<>(r.getDouble(2), r.getDouble(1))))
                 .reduceByKey((cat1, cat2) -> cat2._2 >= cat1._2 ? cat2 : cat1)
                 .mapToPair(t -> new Tuple2<>(t._1, t._2._1));
 
