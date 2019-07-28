@@ -32,11 +32,10 @@ public class DataUtils {
                 .withColumnRenamed("Descript", "Sentence");
     }
 
-    public static Dataset<Row> generateDummyData(SparkSession spark,
-                                                 String csvPath, int totalTrainingCount, int totalQueryCount) {
-        return null;
-    }
-
+    /*
+     * Generate dummy data for test purpose
+     * @spark spark session
+     */
     public static Dataset<Row> generateDummyData(SparkSession spark) {
         List<Row> data = Arrays.asList(
                 RowFactory.create("0c", "Hi I heard about Spark."),

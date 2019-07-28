@@ -10,7 +10,7 @@ import org.apache.spark.sql.SparkSession;
 @Accessors(fluent = true)
 public class PreProcessingService {
 
-    private static final int EMB_SIZE = 2;
+    private static final int EMB_SIZE = 16;
 
     private SparkSession spark;
 
@@ -20,10 +20,15 @@ public class PreProcessingService {
     public PreProcessingService(SparkSession sparkSession) {
         spark = sparkSession;
 
-        RegexTokenizer regexTokenizer = new RegexTokenizer()
+        // Not a good tokenizer, will fail in cases of ",", ".", "?" etc.
+        RegexTokenizer tokenizer = new RegexTokenizer()
                 .setInputCol("Sentence")
                 .setOutputCol("RawWords")
                 .setPattern("\\W");
+
+        /*Tokenizer tokenizer = new Tokenizer()
+                .setInputCol("Sentence")
+                .setOutputCol("RawWords");*/
 
         StopWordsRemover stopWordsRemover = new StopWordsRemover()
                 .setInputCol("RawWords")
@@ -41,6 +46,6 @@ public class PreProcessingService {
                 .setP(2.0);
 
         preProcessingPipeline = new Pipeline()
-        .setStages(new PipelineStage[]{regexTokenizer, stopWordsRemover, word2Vec, l2Normalizer});
+        .setStages(new PipelineStage[]{tokenizer, stopWordsRemover, word2Vec, l2Normalizer});
     }
 }

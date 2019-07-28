@@ -46,6 +46,7 @@ public class ClassificationService {
                             (Double[]) JavaConversions.seqAsJavaList(vecB).toArray());
                 }, DataTypes.DoubleType);*/
 
+        //ToDo: Add null check for general case
         spark.udf().register("toArray",
                 (UDF1<DenseVector, Object>) DenseVector::toArray, DataTypes.createArrayType(DataTypes.DoubleType));
 
@@ -53,15 +54,7 @@ public class ClassificationService {
         preProcessingService = new PreProcessingService(spark);
     }
 
-
-    /*
-     *  process data ("Sentence", "Category") through data and
-     *  return <testSentID, <trainSentLabel, Matched>>
-     *  @trainData train data
-     *  @testData test data
-     */
-    JavaPairRDD<String, Double> modelProcessing(Dataset<Row> trainData,
-                                                 Dataset<Row> testData) {
+    JavaPairRDD<String, Double> classify(Dataset<Row> trainData, Dataset<Row> testData) {
 
         PipelineModel preProcessingFit = preProcessingService.preProcessingPipeline().fit(trainData);
 
@@ -91,8 +84,6 @@ public class ClassificationService {
                 .mapToPair(t -> new Tuple2<>(t._1, t._2._1));
 
         resultRdd = resultRdd.persist(StorageLevel.MEMORY_AND_DISK());
-        /*joinedData.show();
-        resultRdd.foreach(v -> System.out.println(v));*/
 
         return resultRdd;
     }
