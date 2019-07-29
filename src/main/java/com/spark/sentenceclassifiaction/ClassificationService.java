@@ -54,7 +54,7 @@ public class ClassificationService {
         preProcessingService = new PreProcessingService(spark);
     }
 
-    JavaPairRDD<String, Double> classify(Dataset<Row> trainData, Dataset<Row> testData) {
+    JavaPairRDD<String, Double> classifyTestData(Dataset<Row> trainData, Dataset<Row> testData) {
 
         PipelineModel preProcessingFit = preProcessingService.preProcessingPipeline().fit(trainData);
 

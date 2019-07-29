@@ -32,11 +32,10 @@ public class Main {
         trainData.show();
 
         // Execution time can be seen on Spark History Server.
-        JavaPairRDD<String, Double> predictionRdd = classificationService.classify(trainData,
+        JavaPairRDD<String, Double> predictionRdd = classificationService.classifyTestData(trainData,
                 testData);
 
         testData = classificationService.trainLabelIndexerModel().transform(testData);
-
         JavaPairRDD<String, Double> gtRdd = testData.javaRDD()
                 .mapToPair(r -> new Tuple2<>(r.getAs("Sentence"), r.getAs("Label")));
 
