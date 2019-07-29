@@ -6,7 +6,7 @@ Sentence classification using Spark in Java.
 For each test sentence, the cosine similarity is calculated with all training sentences.
 Averaged word2vec embeddings of words (after removing stop words) is used as sentence embedding. 
 The class of sentences with highest average cosine similarity is assigned to test sentence.
-(Its clear that above is not the best methods both time performance and accuracy wise. See Notes section below.)
+(Its clear that above is not the best method, both time performance and accuracy wise. See Notes section below.)
 
 ## Getting Started
 
